@@ -22,13 +22,18 @@ export default function SimulatorPage() {
   const [showJson, setShowJson] = useState<boolean>(false);
   const [loadingScenarios, setLoadingScenarios] = useState<boolean>(true);
   const [pipelineStep, setPipelineStep] = useState<number>(0);
+  const [amountInput, setAmountInput] = useState<number>(1499);
 
   useEffect(() => {
     fetchScenarios()
       .then((data) => {
         setScenarios(data);
         if (Object.keys(data).length > 0 && !data[selectedScenarioKey]) {
-          setSelectedScenarioKey(Object.keys(data)[0]);
+          const firstKey = Object.keys(data)[0];
+          setSelectedScenarioKey(firstKey);
+          setAmountInput(data[firstKey].default_amount);
+        } else if (data[selectedScenarioKey]) {
+          setAmountInput(data[selectedScenarioKey].default_amount);
         }
       })
       .catch((err) => {
@@ -58,6 +63,9 @@ export default function SimulatorPage() {
     setSimulationData(null);
     setCurrentFailure(null);
     setPipelineStep(0);
+    if (scenarios[key]) {
+      setAmountInput(scenarios[key].default_amount);
+    }
   };
 
   const handleTriggerPayment = async () => {
@@ -68,7 +76,7 @@ export default function SimulatorPage() {
       // Simulate network gateway trip for realism
       await new Promise((r) => setTimeout(r, 900));
 
-      const res = await simulateFailure(selectedScenarioKey, currentScenario.default_amount);
+      const res = await simulateFailure(selectedScenarioKey, amountInput);
       setSimulationData(res);
       setCurrentFailure(res.payment_failure);
       setCheckoutState("failed");
@@ -109,7 +117,10 @@ export default function SimulatorPage() {
     setSimulationData(null);
     setCurrentFailure(null);
     setPipelineStep(0);
+    setAmountInput(currentScenario.default_amount);
   };
+
+  const activeAmount = currentFailure?.amount ?? amountInput;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
@@ -227,10 +238,52 @@ export default function SimulatorPage() {
                 <div className="font-semibold text-ink text-[16px]">{currentScenario.plan_name}</div>
               </div>
               <div className="text-right">
-                <div className="text-[11px] font-mono text-ink-faint">Total Due</div>
-                <div className="font-mono font-semibold text-ink text-[16px]">
-                  ₹{currentScenario.default_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                <label htmlFor="custom-amount" className="text-[11px] font-mono text-ink-faint flex items-center justify-end gap-1">
+                  <span>Amount Due</span>
+                  {checkoutState === "idle" && (
+                    <span className="text-[10px] text-accent font-semibold">(Editable ✎)</span>
+                  )}
+                </label>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  <span className="font-mono font-semibold text-ink text-[16px]">₹</span>
+                  <input
+                    id="custom-amount"
+                    type="number"
+                    min="1"
+                    step="100"
+                    disabled={checkoutState !== "idle"}
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(Math.max(1, Number(e.target.value)))}
+                    className="w-28 font-mono font-semibold text-ink text-[16px] text-right bg-paper border border-rule focus:border-accent focus:ring-1 focus:ring-accent rounded px-1.5 py-0.5 outline-none disabled:bg-white disabled:border-transparent transition-colors"
+                  />
                 </div>
+                {checkoutState === "idle" && (
+                  <div className="flex items-center justify-end gap-1.5 mt-1 text-[11px] font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setAmountInput(currentScenario.default_amount)}
+                      className="text-ink-faint hover:text-ink underline"
+                    >
+                      Default
+                    </button>
+                    <span className="text-rule">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setAmountInput(1499)}
+                      className="text-ink-faint hover:text-accent"
+                    >
+                      ₹1.5k
+                    </button>
+                    <span className="text-rule">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setAmountInput(18500)}
+                      className="text-ink-faint hover:text-accent"
+                    >
+                      ₹18.5k
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -318,7 +371,7 @@ export default function SimulatorPage() {
                     </p>
                     <p>
                       {currentFailure?.customer_message ||
-                        `Hi ${currentScenario.customer_name.split(" ")[0]}, your payment for ${currentScenario.plan_name} of ₹${currentScenario.default_amount.toLocaleString("en-IN")} was declined. Click below to resolve seamlessly:`}
+                        `Hi ${currentScenario.customer_name.split(" ")[0]}, your payment for ${currentScenario.plan_name} of ₹${activeAmount.toLocaleString("en-IN")} was declined. Click below to resolve seamlessly:`}
                     </p>
                     <div className="text-[10px] text-right text-ink-faint mt-1.5 font-mono">
                       Sent via WhatsApp Cloud API
@@ -360,7 +413,7 @@ export default function SimulatorPage() {
                   Payment Successfully Recovered!
                 </div>
                 <p className="text-[12px] text-ink-muted mt-1 max-w-sm mx-auto">
-                  ₹{currentScenario.default_amount.toLocaleString("en-IN")} secured into merchant
+                  ₹{activeAmount.toLocaleString("en-IN")} secured into merchant
                   account via {currentScenario.recovery_method}. Involuntary churn averted.
                 </p>
                 <div className="mt-4 pt-3 border-t border-recovered/20 flex items-center justify-center gap-2 text-[12px] font-mono text-recovered font-medium">
@@ -588,7 +641,7 @@ export default function SimulatorPage() {
                   </div>
                   {pipelineStep === 5 && (
                     <span className="text-[11px] font-mono bg-recovered text-white px-2 py-0.5 rounded font-medium">
-                      RECOVERED (+₹{currentScenario.default_amount.toLocaleString("en-IN")})
+                      RECOVERED (+₹{activeAmount.toLocaleString("en-IN")})
                     </span>
                   )}
                 </div>
