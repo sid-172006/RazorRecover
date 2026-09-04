@@ -40,6 +40,7 @@ export type Metrics = {
   classified_by_rule: number;
   classified_by_claude: number;
   policy_rejected_count: number;
+  policy_violations_count?: number;
   recovered_count: number;
   recovered_amount: number;
   unresolved_or_failed_count: number;
@@ -47,6 +48,9 @@ export type Metrics = {
   retries_avoided: number;
   total_amount_at_risk: number;
   recovery_rate: number | null;
+  avg_time_to_recovery?: number;
+  category_counts?: Record<string, number>;
+  recovery_by_category?: Record<string, number>;
   note: string;
 };
 

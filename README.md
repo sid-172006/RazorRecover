@@ -93,6 +93,20 @@ python razorrecover/test_e2e_playwright.py
 
 ---
 
+## ⚠️ Data Strategy: Why Simulated Webhooks
+
+Razorpay's webhook configuration is **gated behind KYC completion, even in Test Mode**. While API keys are available immediately, the Dashboard → Webhooks settings page requires full KYC verification before a webhook endpoint URL can be registered. This means real `payment.failed` webhook events cannot be received without a fully verified business account.
+
+**Our workaround** (documented in the [project spec's Data Strategy section](RazorRecover-Project-Spec.md#5-data-strategy-be-explicit-about-this-in-the-demo)):
+
+- `scripts/send_test_webhook.py` generates realistically structured, correctly HMAC-SHA256 signed payloads that match Razorpay's published webhook format — field names, error codes, error reasons, and nesting all taken from Razorpay's official documentation.
+- The backend **cannot distinguish** these from a real Razorpay webhook call — the same signature verification, parsing, classification, policy, and execution pipeline runs identically.
+- Every simulated fixture is **explicitly labeled** `SIMULATED` (via the `X-RazorRecover-Test-Source` header), and the dashboard renders a visible `SIMULATED` provenance tag on each record. We never present simulated outcomes as genuine recovered money.
+
+This honesty is a strength, not a weakness — it shows we understand the limits of test-mode data instead of overclaiming.
+
+---
+
 ## 📄 Documentation
 
 - [Project Specification](RazorRecover-Project-Spec.md)

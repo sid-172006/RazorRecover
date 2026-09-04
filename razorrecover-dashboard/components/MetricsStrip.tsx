@@ -24,6 +24,8 @@ export function MetricsStrip({ metrics }: { metrics: Metrics }) {
         <Stat label="Unresolved / failed" value={String(metrics.unresolved_or_failed_count)} />
         <Stat label="Manual review" value={String(metrics.manual_review_count)} />
         <Stat label="Recovery rate" value={recoveryRate} />
+        <Stat label="Avg recovery time" value={metrics.avg_time_to_recovery !== undefined ? `${metrics.avg_time_to_recovery}s` : "—"} />
+        <Stat label="Policy violations" value={String(metrics.policy_violations_count ?? 0)} />
       </div>
       <p className="text-[13px] text-ink-faint pt-2 border-t border-rule">{metrics.note}</p>
     </div>

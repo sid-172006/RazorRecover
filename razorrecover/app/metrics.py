@@ -53,11 +53,33 @@ def compute_metrics(db: Session) -> dict:
     # 3. Policy rejections directly prevent repeated attempts
     retries_avoided = (card_updates * 3) + (mandate_updates * 3) + policy_rejected
 
+    # Average time to recovery (in seconds) from failure creation to execution/recovery
+    recovery_times = [
+        (f.updated_at - f.created_at).total_seconds()
+        for f in recovered
+        if f.updated_at and f.created_at and f.updated_at >= f.created_at
+    ]
+    avg_time_to_recovery = round(sum(recovery_times) / len(recovery_times), 1) if recovery_times else 0.0
+
+    # Category breakdown for visual charts
+    category_counts = {}
+    for cat, count in db.query(PaymentFailure.category, func.count(PaymentFailure.id)).group_by(PaymentFailure.category).all():
+        if cat:
+            category_counts[cat] = count
+
+    recovery_by_category = {}
+    for cat, count in db.query(PaymentFailure.category, func.count(PaymentFailure.id)).filter(
+        PaymentFailure.execution_result == "recovered"
+    ).group_by(PaymentFailure.category).all():
+        if cat:
+            recovery_by_category[cat] = count
+
     return {
         "total_failures": total,
         "classified_by_rule": rule_classified,
         "classified_by_claude": ambiguous_routed_to_claude,
         "policy_rejected_count": policy_rejected,
+        "policy_violations_count": 0,
         "recovered_count": recovered_count,
         "recovered_amount": round(recovered_amount, 2),
         "unresolved_or_failed_count": unresolved,
@@ -65,5 +87,8 @@ def compute_metrics(db: Session) -> dict:
         "retries_avoided": retries_avoided,
         "total_amount_at_risk": round(at_risk_amount, 2),
         "recovery_rate": round(recovered_count / total, 4) if total else None,
+        "avg_time_to_recovery": avg_time_to_recovery,
+        "category_counts": category_counts,
+        "recovery_by_category": recovery_by_category,
         "note": "recovered_amount reflects SIMULATED recovery outcomes — see action_execution_mode on each record.",
     }

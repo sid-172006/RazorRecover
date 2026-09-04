@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AuditEvent, Metrics, PaymentFailure, fetchAuditTrail, fetchFailures, fetchMetrics } from "@/lib/api";
 import { MetricsStrip } from "@/components/MetricsStrip";
+import { RecoveryBreakdown } from "@/components/RecoveryBreakdown";
 import { FailureList } from "@/components/FailureList";
 import { DecisionTimeline } from "@/components/DecisionTimeline";
 
@@ -77,8 +78,9 @@ export default function DashboardPage() {
       )}
 
       {metrics && (
-        <section className="mb-8 pb-6 border-b border-rule-strong">
+        <section className="mb-8 flex flex-col gap-6 pb-6 border-b border-rule-strong">
           <MetricsStrip metrics={metrics} />
+          <RecoveryBreakdown metrics={metrics} />
         </section>
       )}
 
