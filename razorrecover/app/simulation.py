@@ -108,9 +108,14 @@ SIMULATION_SCENARIOS = {
 }
 
 
-def build_simulated_webhook(scenario_key: str, custom_amount: float = None) -> tuple[dict, bytes, str]:
+def build_simulated_webhook(
+    scenario_key: str,
+    custom_amount: float = None,
+    custom_error_description: str = None,
+) -> tuple[dict, bytes, str]:
     """
     Constructs a valid Razorpay payment.failed payload and its HMAC-SHA256 signature.
+    Supports custom amounts and custom error descriptions for dynamic LLM testing.
     Returns: (payload_dict, raw_body_bytes, signature_hex)
     """
     scenario = SIMULATION_SCENARIOS.get(scenario_key)
@@ -125,6 +130,8 @@ def build_simulated_webhook(scenario_key: str, custom_amount: float = None) -> t
     payment_id = f"pay_sim_{uuid.uuid4().hex[:10]}"
     subscription_id = f"sub_sim_{uuid.uuid4().hex[:10]}"
     event_id = f"evt_sim_{uuid.uuid4().hex[:10]}"
+
+    error_description = custom_error_description.strip() if custom_error_description else scenario["error_description"]
 
     payload = {
         "id": event_id,
@@ -146,7 +153,7 @@ def build_simulated_webhook(scenario_key: str, custom_amount: float = None) -> t
                     "contact": scenario["customer_phone"],
                     "subscription_id": subscription_id,
                     "error_code": scenario["error_code"],
-                    "error_description": scenario["error_description"],
+                    "error_description": error_description,
                     "error_source": scenario["error_source"],
                     "error_step": scenario["error_step"],
                     "error_reason": scenario["error_reason"],

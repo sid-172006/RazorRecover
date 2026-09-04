@@ -23,6 +23,7 @@ export default function SimulatorPage() {
   const [loadingScenarios, setLoadingScenarios] = useState<boolean>(true);
   const [pipelineStep, setPipelineStep] = useState<number>(0);
   const [amountInput, setAmountInput] = useState<number>(1499);
+  const [errorDescInput, setErrorDescInput] = useState<string>("");
 
   useEffect(() => {
     fetchScenarios()
@@ -32,8 +33,10 @@ export default function SimulatorPage() {
           const firstKey = Object.keys(data)[0];
           setSelectedScenarioKey(firstKey);
           setAmountInput(data[firstKey].default_amount);
+          setErrorDescInput(data[firstKey].error_description);
         } else if (data[selectedScenarioKey]) {
           setAmountInput(data[selectedScenarioKey].default_amount);
+          setErrorDescInput(data[selectedScenarioKey].error_description);
         }
       })
       .catch((err) => {
@@ -65,6 +68,7 @@ export default function SimulatorPage() {
     setPipelineStep(0);
     if (scenarios[key]) {
       setAmountInput(scenarios[key].default_amount);
+      setErrorDescInput(scenarios[key].error_description);
     }
   };
 
@@ -76,7 +80,7 @@ export default function SimulatorPage() {
       // Simulate network gateway trip for realism
       await new Promise((r) => setTimeout(r, 900));
 
-      const res = await simulateFailure(selectedScenarioKey, amountInput);
+      const res = await simulateFailure(selectedScenarioKey, amountInput, errorDescInput);
       setSimulationData(res);
       setCurrentFailure(res.payment_failure);
       setCheckoutState("failed");
@@ -305,6 +309,88 @@ export default function SimulatorPage() {
               </div>
             </div>
 
+            {/* Ambiguous Failure Variations (Gemini Triage) */}
+            {selectedScenarioKey === "generic_bank_decline" && checkoutState === "idle" && (
+              <div className="mb-5 p-3.5 rounded-xl border border-purple-200 bg-purple-50/40 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-purple-950 flex items-center gap-1.5">
+                    <span>✨</span> Ambiguous Failure Variations (Gemini Triage)
+                  </span>
+                  <span className="text-[10px] font-mono bg-purple-200/70 text-purple-800 px-1.5 py-0.5 rounded font-medium">
+                    Live LLM
+                  </span>
+                </div>
+                <p className="text-[11px] text-purple-900/80 leading-relaxed">
+                  Choose a realistic bank decline scenario or type any custom bank error string to watch Gemini analyze the root cause dynamically:
+                </p>
+
+                {/* Sub-scenario quick select buttons */}
+                <div className="grid grid-cols-1 gap-1.5">
+                  {[
+                    {
+                      label: "1. Transient Core Banking Glitch",
+                      badge: "Retry Strategy",
+                      text: "Payment was declined by the customer's bank.",
+                    },
+                    {
+                      label: "2. Banking App 2FA Confirmation Required",
+                      badge: "Customer Re-approval",
+                      text: "Transaction requires customer confirmation on mobile banking app or biometric approval.",
+                    },
+                    {
+                      label: "3. Card Restrictions / Channel Blocked",
+                      badge: "Update Method",
+                      text: "Bank response: Transaction not permitted for this card type. Account or e-commerce channel restriction active.",
+                    },
+                    {
+                      label: "4. Mandate Limit / Execution Blocked",
+                      badge: "Re-authorise",
+                      text: "Standing instruction mandate execution failed: recurring debit authorization limit exceeded.",
+                    },
+                  ].map((preset, idx) => {
+                    const isSelected = errorDescInput === preset.text;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setErrorDescInput(preset.text)}
+                        className={`w-full text-left p-2 rounded-lg border text-[11px] transition-all flex items-center justify-between gap-2 ${
+                          isSelected
+                            ? "bg-white border-purple-500 shadow-sm font-medium text-purple-950 ring-1 ring-purple-400"
+                            : "bg-white/80 border-purple-100 hover:border-purple-300 text-ink hover:bg-white"
+                        }`}
+                      >
+                        <span className="truncate">{preset.label}</span>
+                        <span
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                            isSelected
+                              ? "bg-purple-100 text-purple-800 font-semibold"
+                              : "bg-paper text-ink-muted"
+                          }`}
+                        >
+                          {preset.badge}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom error input textarea */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-medium text-purple-950 mb-1">
+                    Raw Bank Error String (Sent to Gemini):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={errorDescInput}
+                    onChange={(e) => setErrorDescInput(e.target.value)}
+                    placeholder="Type any custom banking decline description here..."
+                    className="w-full text-[12px] font-mono p-2 bg-white border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-ink resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons based on state */}
             {checkoutState === "idle" && (
               <button
@@ -330,7 +416,7 @@ export default function SimulatorPage() {
                   <span>Payment Declined ({currentScenario.error_code})</span>
                 </div>
                 <p className="text-[12px] text-ink-muted leading-relaxed">
-                  {currentScenario.error_description}
+                  {errorDescInput || currentScenario.error_description}
                 </p>
                 <div className="mt-2 text-[11px] font-mono text-ink-faint">
                   Transaction Ref: {currentFailure?.razorpay_payment_id || "pay_sim_pending"}
@@ -392,7 +478,23 @@ export default function SimulatorPage() {
                     ) : (
                       <>
                         <span>⚡</span>
-                        <span>{currentScenario.action_cta}</span>
+                        <span>
+                          {(() => {
+                            if (currentFailure?.recommended_action === "request_payment_method_update") {
+                              return "Update Card / Payment Method";
+                            }
+                            if (currentFailure?.recommended_action === "customer_reapproval") {
+                              return `Authorize ₹${activeAmount.toLocaleString("en-IN")} in Banking App`;
+                            }
+                            if (currentFailure?.recommended_action === "request_reauthorisation") {
+                              return "Re-authorise Auto-Debit Mandate";
+                            }
+                            if (currentFailure?.recommended_action === "retry_after_delay") {
+                              return "Schedule Delayed Retry (or Retry Now)";
+                            }
+                            return currentScenario.action_cta;
+                          })()}
+                        </span>
                       </>
                     )}
                   </button>

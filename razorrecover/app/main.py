@@ -186,6 +186,7 @@ def get_metrics(db: Session = Depends(get_db)):
 class SimulateFailureRequest(BaseModel):
     scenario: str = "insufficient_balance"
     amount: Optional[float] = None
+    error_description: Optional[str] = None
 
 
 class ResolveFailureRequest(BaseModel):
@@ -207,7 +208,11 @@ def simulate_failure(req: SimulateFailureRequest, db: Session = Depends(get_db))
     if req.scenario not in SIMULATION_SCENARIOS:
         raise HTTPException(status_code=400, detail=f"Unknown scenario: {req.scenario}")
 
-    payload, raw_bytes, signature = build_simulated_webhook(req.scenario, req.amount)
+    payload, raw_bytes, signature = build_simulated_webhook(
+        req.scenario,
+        req.amount,
+        req.error_description,
+    )
     event_type = payload.get("event")
     razorpay_event_id = payload.get("id")
     fields = extract_failure_fields(payload)

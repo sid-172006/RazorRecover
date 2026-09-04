@@ -115,8 +115,16 @@ export function fetchScenarios(): Promise<Record<string, SimulationScenario>> {
   return apiGet<Record<string, SimulationScenario>>(`/simulation/scenarios`);
 }
 
-export function simulateFailure(scenario: string, amount?: number): Promise<SimulationResponse> {
-  return apiPost<SimulationResponse>(`/simulate-failure`, { scenario, amount });
+export function simulateFailure(
+  scenario: string,
+  amount?: number,
+  errorDescription?: string
+): Promise<SimulationResponse> {
+  return apiPost<SimulationResponse>(`/simulate-failure`, {
+    scenario,
+    amount,
+    error_description: errorDescription,
+  });
 }
 
 export function resolveFailure(
