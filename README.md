@@ -65,7 +65,6 @@ cd razorrecover
 python -m venv venv
 venv\Scripts\activate      # On Windows
 pip install -r requirements.txt
-playwright install chromium
 
 # Copy and fill your .env
 cp .env.example .env
@@ -87,9 +86,12 @@ Open **http://localhost:3000** in your browser.
 # Run the complete ground-truth benchmark:
 python razorrecover/scripts/run_ground_truth_batch.py
 
-# Run Playwright automated E2E browser & API suite:
+# (Optional) Run the Playwright E2E browser & API test suite:
+# Requires: pip install playwright && playwright install chromium
 python razorrecover/test_e2e_playwright.py
 ```
+
+> **Note:** Playwright is only needed for the optional E2E browser test — the backend, dashboard, and benchmark all work without it.
 
 ---
 
