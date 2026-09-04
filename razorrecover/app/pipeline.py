@@ -69,11 +69,11 @@ def _handle_ambiguous_case(db: Session, failure: PaymentFailure, fields: dict) -
         # Claude call failed, or returned something invalid — do NOT guess.
         # Route straight to manual review, same as a policy rejection would.
         failure.status = FailureStatus.MANUAL_REVIEW
-        failure.decision_reason = "Claude classification unavailable or invalid — routed to manual review."
+        failure.decision_reason = "Gemini classification unavailable — routed to manual review."
         db.commit()
         db.refresh(failure)
-        log_event(db, failure.id, "claude_classification_failed", {
-            "note": "Claude call failed or returned invalid/unparseable output.",
+        log_event(db, failure.id, "gemini_classification_failed", {
+            "note": "Gemini call failed or returned invalid output.",
         })
         return failure
 
