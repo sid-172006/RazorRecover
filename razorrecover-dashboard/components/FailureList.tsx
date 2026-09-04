@@ -44,8 +44,19 @@ export function FailureList({
                 <span className="text-[14px] text-ink truncate">{formatCategory(f.category)}</span>
                 <ProvenanceTag mode={f.execution_mode} />
               </div>
-              <div className="mt-1.5">
+              <div className="mt-1.5 flex items-center justify-between gap-2">
                 <StatusBadge tone={tone} label={statusLabel(f)} />
+                {f.decided_by && (
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                      f.decided_by === "rule"
+                        ? "bg-paper text-ink-muted border-rule"
+                        : "bg-purple-50 text-purple-700 border-purple-200 font-semibold"
+                    }`}
+                  >
+                    {f.decided_by === "rule" ? "⚡ Rule" : "🤖 Gemini"}
+                  </span>
+                )}
               </div>
             </button>
           </li>

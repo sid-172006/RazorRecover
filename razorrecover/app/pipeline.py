@@ -79,14 +79,14 @@ def _handle_ambiguous_case(db: Session, failure: PaymentFailure, fields: dict) -
 
     failure.category = decision.category
     failure.confidence = decision.confidence
-    failure.decided_by = "claude"
+    failure.decided_by = "gemini"
     failure.recommended_action = decision.recommended_action
     failure.decision_reason = decision.reason
     failure.customer_message = decision.customer_message
     db.commit()
     db.refresh(failure)
 
-    log_event(db, failure.id, "claude_classified", {
+    log_event(db, failure.id, "gemini_classified", {
         "category": decision.category,
         "recommended_action": decision.recommended_action,
         "confidence": decision.confidence,

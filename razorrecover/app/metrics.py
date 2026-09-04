@@ -28,7 +28,7 @@ def compute_metrics(db: Session) -> dict:
     ).scalar() or 0
 
     ambiguous_routed_to_claude = db.query(func.count(PaymentFailure.id)).filter(
-        PaymentFailure.decided_by == "claude"
+        PaymentFailure.decided_by.in_(["gemini", "claude"])
     ).scalar() or 0
 
     rule_classified = db.query(func.count(PaymentFailure.id)).filter(

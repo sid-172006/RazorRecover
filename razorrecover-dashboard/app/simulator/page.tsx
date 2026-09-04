@@ -157,36 +157,50 @@ export default function SimulatorPage() {
           <span className="text-[12px] text-ink-faint">Matches Razorpay published error taxonomy</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {Object.entries(scenarios).map(([key, item]) => {
             const isSelected = selectedScenarioKey === key;
+            const isGemini = key === "generic_bank_decline";
             return (
               <button
                 key={key}
                 onClick={() => handleSelectScenario(key)}
-                className={`text-left p-3.5 rounded-lg border transition-all relative overflow-hidden ${
+                className={`text-left p-3.5 rounded-lg border transition-all relative overflow-hidden flex flex-col justify-between ${
                   isSelected
-                    ? "border-accent bg-accent-soft/40 shadow-sm ring-1 ring-accent"
+                    ? isGemini
+                      ? "border-purple-500 bg-purple-50/50 shadow-sm ring-1 ring-purple-500"
+                      : "border-accent bg-accent-soft/40 shadow-sm ring-1 ring-accent"
                     : "border-rule bg-paper hover:border-rule-strong hover:bg-white"
                 }`}
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono text-ink-faint">
-                    ₹{item.default_amount.toLocaleString("en-IN")}
-                  </span>
-                  {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  )}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-mono text-ink-faint">
+                      ₹{item.default_amount.toLocaleString("en-IN")}
+                    </span>
+                    {isGemini ? (
+                      <span className="text-[10px] font-mono bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold border border-purple-200 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                        GEMINI
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono bg-paper text-ink-muted px-1.5 py-0.5 rounded border border-rule">
+                        RULE
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[13px] font-semibold text-ink leading-snug mb-1">
+                    {item.title}
+                  </div>
+                  <p className="text-[11px] text-ink-muted line-clamp-2 leading-relaxed">
+                    {item.story}
+                  </p>
                 </div>
-                <div className="text-[14px] font-semibold text-ink leading-snug mb-1">
-                  {item.title}
-                </div>
-                <p className="text-[12px] text-ink-muted line-clamp-2 leading-relaxed">
-                  {item.story}
-                </p>
                 <div className="mt-2.5 pt-2 border-t border-rule/60 flex items-center justify-between text-[11px] text-ink-faint font-mono">
                   <span>{item.customer_name.split(" ")[0]}</span>
-                  <span className="text-accent font-medium">{item.error_reason}</span>
+                  <span className={isGemini ? "text-purple-700 font-semibold" : "text-accent font-medium"}>
+                    {isGemini ? "Gemini Fallback" : item.error_reason}
+                  </span>
                 </div>
               </button>
             );
@@ -410,39 +424,94 @@ export default function SimulatorPage() {
               </div>
 
               {/* Step 2: AI Classification */}
-              <div
-                className={`p-3 rounded-lg border transition-all ${
-                  pipelineStep >= 2
-                    ? "border-accent/40 bg-accent-soft/20 text-ink"
-                    : "border-rule/60 bg-paper/60 text-ink-faint opacity-60"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2 font-medium text-[13px]">
-                    <span className="w-5 h-5 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[11px] font-mono font-bold">
-                      2
-                    </span>
-                    <span>Intelligent Diagnosis &amp; Classification</span>
+              {(() => {
+                const isGeminiDecided =
+                  currentFailure?.decided_by === "gemini" ||
+                  currentFailure?.decided_by === "claude" ||
+                  selectedScenarioKey === "generic_bank_decline";
+
+                return (
+                  <div
+                    className={`p-3.5 rounded-lg border transition-all ${
+                      pipelineStep >= 2
+                        ? isGeminiDecided
+                          ? "border-purple-300 bg-gradient-to-br from-purple-50/70 to-indigo-50/30 text-ink shadow-sm"
+                          : "border-accent/40 bg-accent-soft/20 text-ink"
+                        : "border-rule/60 bg-paper/60 text-ink-faint opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2 font-medium text-[13px]">
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-mono font-bold ${
+                            isGeminiDecided && pipelineStep >= 2
+                              ? "bg-purple-600 text-white"
+                              : "bg-accent/10 text-accent"
+                          }`}
+                        >
+                          2
+                        </span>
+                        <span>Intelligent Diagnosis &amp; Classification</span>
+                      </div>
+                      {pipelineStep >= 2 && (
+                        <span
+                          className={`text-[11px] font-mono px-2 py-0.5 rounded font-semibold flex items-center gap-1.5 ${
+                            isGeminiDecided
+                              ? "bg-purple-100 text-purple-800 border border-purple-200"
+                              : "bg-accent-soft text-accent"
+                          }`}
+                        >
+                          {isGeminiDecided ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                              <span>🤖 Google Gemini (Live AI Agent)</span>
+                            </>
+                          ) : (
+                            "⚡ Tier 1: Deterministic Rule"
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {pipelineStep >= 2 && isGeminiDecided ? (
+                      <div className="text-[12px] text-ink ml-7 space-y-2 mt-2">
+                        <div className="flex items-center gap-2 text-[11px] font-mono bg-white/90 border border-purple-200/80 p-2 rounded">
+                          <span className="text-amber-700 font-semibold">Tier 1 (Rule Engine):</span>
+                          <span className="text-ink-muted">Inconclusive — Vague decline with no specific reason code.</span>
+                        </div>
+                        <div className="bg-purple-50/80 border border-purple-200 p-2.5 rounded-lg">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-purple-900 font-semibold mb-1">
+                            <span className="flex items-center gap-1">
+                              <span>Tier 2: Escalated to Google Gemini</span>
+                            </span>
+                            <span>Confidence: {currentFailure?.confidence ? `${Math.round(currentFailure.confidence * 100)}%` : "70%"}</span>
+                          </div>
+                          <div className="text-[12px] text-purple-950 font-sans leading-relaxed">
+                            &ldquo;{currentFailure?.decision_reason || "The customer's bank declined the payment without giving a specific reason. Recommending smart delayed retry."}&rdquo;
+                          </div>
+                          <div className="mt-1.5 pt-1.5 border-t border-purple-200/60 flex items-center justify-between text-[11px] font-mono text-purple-800">
+                            <span>Category: <strong>{currentFailure?.category || "bank_decline_unspecified"}</strong></span>
+                            <span>Action: <strong>{currentFailure?.recommended_action || "retry_after_delay"}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[12px] text-ink-muted ml-7 space-y-1">
+                        <div>
+                          Category:{" "}
+                          <strong className="text-ink font-mono">
+                            {currentFailure?.category || currentScenario.error_reason}
+                          </strong>{" "}
+                          (Confidence: {currentFailure?.confidence ? `${Math.round(currentFailure.confidence * 100)}%` : "100%"})
+                        </div>
+                        <div className="text-[11px] text-ink-faint">
+                          Diagnosis: {currentFailure?.decision_reason || "Identified root cause from Razorpay gateway error taxonomy."}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {pipelineStep >= 2 && (
-                    <span className="text-[11px] font-mono bg-accent-soft text-accent px-2 py-0.5 rounded font-medium">
-                      {currentFailure?.decided_by === "claude" ? "Claude 3.5 Sonnet" : "Deterministic Rule"}
-                    </span>
-                  )}
-                </div>
-                <div className="text-[12px] text-ink-muted ml-7 space-y-1">
-                  <div>
-                    Category:{" "}
-                    <strong className="text-ink font-mono">
-                      {currentFailure?.category || currentScenario.error_reason}
-                    </strong>{" "}
-                    (Confidence: {currentFailure?.confidence ? `${Math.round(currentFailure.confidence * 100)}%` : "100%"})
-                  </div>
-                  <div className="text-[11px] text-ink-faint">
-                    Diagnosis: {currentFailure?.decision_reason || "Identified root cause from Razorpay gateway error taxonomy."}
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Step 3: Policy Guardrails */}
               <div

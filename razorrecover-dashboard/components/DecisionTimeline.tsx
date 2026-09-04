@@ -46,9 +46,31 @@ export function DecisionTimeline({
             </span>
           )}
           <ProvenanceTag mode={failure.execution_mode} />
+          {failure.decided_by && (
+            <span
+              className={`font-mono text-[12px] px-2 py-0.5 rounded border flex items-center gap-1 ${
+                failure.decided_by === "rule"
+                  ? "bg-paper text-ink border-rule"
+                  : "bg-purple-50 text-purple-700 border-purple-300 font-semibold"
+              }`}
+            >
+              <span>{failure.decided_by === "rule" ? "⚡ Rule Engine" : "🤖 Google Gemini AI"}</span>
+              {failure.confidence !== null && (
+                <span className="opacity-80">({Math.round(failure.confidence * 100)}%)</span>
+              )}
+            </span>
+          )}
         </div>
         {failure.error_description && (
           <p className="text-[14px] text-ink-muted mt-3">{failure.error_description}</p>
+        )}
+        {failure.decision_reason && (
+          <div className="mt-3 p-3 rounded-lg border border-purple-200/80 bg-purple-50/40 text-[13px]">
+            <div className="font-semibold text-purple-900 flex items-center gap-1.5 mb-1">
+              <span>{failure.decided_by === "rule" ? "⚡ Rule Decision Logic" : "🤖 Google Gemini Agent Reasoning"}</span>
+            </div>
+            <p className="text-purple-950 leading-relaxed">&ldquo;{failure.decision_reason}&rdquo;</p>
+          </div>
         )}
       </header>
 

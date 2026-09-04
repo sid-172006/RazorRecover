@@ -89,6 +89,22 @@ SIMULATION_SCENARIOS = {
         "recovery_method": "Smart Delayed Retry",
         "action_cta": "Retry with Alternate Bank",
     },
+    "generic_bank_decline": {
+        "title": "Ambiguous Decline (Gemini AI Fallback)",
+        "story": "Customer's bank declined with zero error code. Deterministic rules cannot classify this, so it escalates live to Google Gemini to reason over the failure and prescribe a smart recovery.",
+        "customer_name": "Sameer Kapoor",
+        "customer_email": "sameer.k@fintechhub.in",
+        "customer_phone": "+91 98450 77123",
+        "default_amount": 4500.0,
+        "plan_name": "Pro Business Suite",
+        "error_code": "GATEWAY_ERROR",
+        "error_description": "Payment was declined by the customer's bank.",
+        "error_source": "customer",
+        "error_step": "payment_authorization",
+        "error_reason": None,
+        "recovery_method": "Gemini Smart Retry",
+        "action_cta": "Retry with UPI / Backup Card",
+    },
 }
 
 

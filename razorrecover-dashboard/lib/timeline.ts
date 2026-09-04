@@ -36,17 +36,19 @@ export function toTimelineEntry(event: AuditEvent): TimelineEntry {
 
     case "rule_classification_inconclusive":
       return {
-        title: "No rule matched",
-        description: "Error was too ambiguous for deterministic rules — routed to AI agent.",
+        title: "Tier 1: No rule matched",
+        description: "Error was too ambiguous for deterministic rules — escalated to Google Gemini AI agent.",
         tone: "caution",
       };
 
+    case "gemini_classified":
     case "claude_classified": {
-      const confidence = typeof d.confidence === "number" ? d.confidence.toFixed(2) : "?";
+      const confidence = typeof d.confidence === "number" ? `${Math.round(d.confidence * 100)}%` : "?";
+      const model = d.model ? String(d.model) : "Google Gemini";
       return {
-        title: `Classified by AI Agent — confidence ${confidence}`,
+        title: `Tier 2: Classified by ${model} — confidence ${confidence}`,
         description: `${formatAction(String(d.recommended_action ?? ""))} recommended. ${d.reason ?? ""}`,
-        tone: "neutral",
+        tone: "positive",
       };
     }
 
