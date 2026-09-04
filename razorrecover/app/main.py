@@ -16,9 +16,12 @@ see the TODO marker in handle_webhook().
 import json
 import logging
 import os
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import FastAPI, Request, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
@@ -30,6 +33,7 @@ from app.audit import log_event
 from app.pipeline import process_failure
 from app.metrics import compute_metrics
 from app.schemas import PaymentFailureOut, AuditEventOut
+from app.simulation import SIMULATION_SCENARIOS, build_simulated_webhook
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -177,3 +181,103 @@ def get_audit_trail(failure_id: str, db: Session = Depends(get_db)):
 @app.get("/metrics")
 def get_metrics(db: Session = Depends(get_db)):
     return compute_metrics(db)
+
+
+class SimulateFailureRequest(BaseModel):
+    scenario: str = "insufficient_balance"
+    amount: Optional[float] = None
+
+
+class ResolveFailureRequest(BaseModel):
+    resolution_method: str = "upi_quickpay"
+
+
+@app.get("/simulation/scenarios")
+def get_simulation_scenarios():
+    """Returns metadata for all available customer demo scenarios."""
+    return SIMULATION_SCENARIOS
+
+
+@app.post("/simulate-failure")
+def simulate_failure(req: SimulateFailureRequest, db: Session = Depends(get_db)):
+    """
+    Ingests an authentic Razorpay payment.failed event for the chosen scenario,
+    runs it through classification, policy checks, and execution.
+    """
+    if req.scenario not in SIMULATION_SCENARIOS:
+        raise HTTPException(status_code=400, detail=f"Unknown scenario: {req.scenario}")
+
+    payload, raw_bytes, signature = build_simulated_webhook(req.scenario, req.amount)
+    event_type = payload.get("event")
+    razorpay_event_id = payload.get("id")
+    fields = extract_failure_fields(payload)
+
+    failure = PaymentFailure(
+        razorpay_event_id=razorpay_event_id,
+        razorpay_payment_id=fields["razorpay_payment_id"],
+        subscription_id=fields["subscription_id"],
+        execution_mode=ExecutionMode.SIMULATED,
+        raw_payload=json.dumps(payload),
+        amount=fields["amount"],
+        error_code=fields["error_code"],
+        error_description=fields["error_description"],
+        error_source=fields["error_source"],
+        error_step=fields["error_step"],
+        error_reason=fields["error_reason"],
+        customer_ref_masked=fields["customer_ref_masked"],
+        status=FailureStatus.RECEIVED,
+    )
+    db.add(failure)
+    db.commit()
+    db.refresh(failure)
+
+    log_event(db, failure.id, "webhook_received", {
+        "event_type": event_type,
+        "error_code": fields["error_code"],
+        "error_reason": fields["error_reason"],
+        "simulated_scenario": req.scenario,
+    })
+
+    failure = process_failure(db, failure)
+
+    scenario_info = SIMULATION_SCENARIOS[req.scenario]
+    if not failure.customer_message:
+        failure.customer_message = f"Hi {scenario_info['customer_name'].split()[0]}, your payment of ₹{failure.amount:,.2f} for {scenario_info['plan_name']} was declined. Please resolve: {scenario_info['action_cta']}."
+        db.commit()
+        db.refresh(failure)
+
+    return {
+        "payment_failure": PaymentFailureOut.model_validate(failure),
+        "scenario": scenario_info,
+        "raw_payload": payload,
+        "signature": signature,
+    }
+
+
+@app.post("/payment-failures/{failure_id}/resolve")
+def resolve_failure(failure_id: str, req: ResolveFailureRequest, db: Session = Depends(get_db)):
+    """
+    Simulates the customer clicking the recovery action (e.g. WhatsApp UPI link or Card update),
+    marking the transaction successfully recovered and updating recovery metrics.
+    """
+    failure = db.query(PaymentFailure).filter_by(id=failure_id).first()
+    if not failure:
+        raise HTTPException(status_code=404, detail="Payment failure not found")
+
+    failure.execution_result = "recovered"
+    failure.status = FailureStatus.EXECUTED
+    failure.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(failure)
+
+    log_event(db, failure.id, "customer_recovered_interactive", {
+        "resolution_method": req.resolution_method,
+        "recovered_amount": failure.amount,
+        "status": "recovered",
+    })
+
+    return {
+        "status": "recovered",
+        "payment_failure": PaymentFailureOut.model_validate(failure),
+    }
+

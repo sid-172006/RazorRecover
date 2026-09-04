@@ -54,10 +54,47 @@ export type Metrics = {
   note: string;
 };
 
+export type SimulationScenario = {
+  title: string;
+  story: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  default_amount: number;
+  plan_name: string;
+  error_code: string;
+  error_description: string;
+  error_source: string;
+  error_step: string;
+  error_reason: string;
+  recovery_method: string;
+  action_cta: string;
+};
+
+export type SimulationResponse = {
+  payment_failure: PaymentFailure;
+  scenario: SimulationScenario;
+  raw_payload: any;
+  signature: string;
+};
+
 async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Request to ${path} failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+async function apiPost<T>(path: string, body: any): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Request to ${path} failed with status ${res.status}: ${errorText}`);
   }
   return res.json();
 }
@@ -73,3 +110,22 @@ export function fetchAuditTrail(failureId: string): Promise<AuditEvent[]> {
 export function fetchMetrics(): Promise<Metrics> {
   return apiGet<Metrics>(`/metrics`);
 }
+
+export function fetchScenarios(): Promise<Record<string, SimulationScenario>> {
+  return apiGet<Record<string, SimulationScenario>>(`/simulation/scenarios`);
+}
+
+export function simulateFailure(scenario: string, amount?: number): Promise<SimulationResponse> {
+  return apiPost<SimulationResponse>(`/simulate-failure`, { scenario, amount });
+}
+
+export function resolveFailure(
+  failureId: string,
+  resolutionMethod: string = "upi_quickpay"
+): Promise<{ status: string; payment_failure: PaymentFailure }> {
+  return apiPost<{ status: string; payment_failure: PaymentFailure }>(
+    `/payment-failures/${failureId}/resolve`,
+    { resolution_method: resolutionMethod }
+  );
+}
+

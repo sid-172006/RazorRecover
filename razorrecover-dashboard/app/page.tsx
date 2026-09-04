@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { AuditEvent, Metrics, PaymentFailure, fetchAuditTrail, fetchFailures, fetchMetrics } from "@/lib/api";
 import { MetricsStrip } from "@/components/MetricsStrip";
 import { RecoveryBreakdown } from "@/components/RecoveryBreakdown";
@@ -64,10 +65,19 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-6xl px-6 py-10">
       <header className="mb-8">
         <div className="flex items-baseline justify-between gap-4 flex-wrap">
-          <h1 className="font-serif text-2xl text-ink">RazorRecover</h1>
-          <p className="text-[13px] text-ink-muted">
-            Failed recurring-payment recovery — decisions, policy checks, and outcomes
-          </p>
+          <div>
+            <h1 className="font-serif text-2xl text-ink font-semibold">Executive Recovery Ledger</h1>
+            <p className="text-[13px] text-ink-muted mt-0.5">
+              Failed recurring-payment recovery — autonomous decisions, policy guardrails, and audit outcomes
+            </p>
+          </div>
+          <Link
+            href="/simulator"
+            className="px-3.5 py-1.5 text-[13px] bg-accent-soft text-accent border border-accent/20 rounded font-medium hover:bg-accent hover:text-white transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <span>⚡ Launch Interactive Simulator</span>
+            <span>→</span>
+          </Link>
         </div>
       </header>
 

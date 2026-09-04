@@ -28,10 +28,15 @@ export const metadata: Metadata = {
   description: "Failed recurring-payment recovery: decisions, policy checks, and outcomes.",
 };
 
+import { Navbar } from "@/components/Navbar";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased bg-paper text-ink min-h-screen">
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }

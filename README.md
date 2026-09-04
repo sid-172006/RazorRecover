@@ -73,13 +73,14 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Frontend Dashboard (Next.js)
+### 2. Frontend Dashboard & Interactive Simulator (Next.js)
 ```bash
 cd razorrecover-dashboard
 npm install
 npm run dev
 ```
-Open **http://localhost:3000** in your browser.
+- Open **http://localhost:3000** for the **Executive Recovery Ledger**.
+- Open **http://localhost:3000/simulator** for the **Live Interactive Simulator** (simulate checkout failures visually and trigger AI recovery in real time without CLI commands).
 
 ### 3. Run Benchmark & Tests
 ```bash
