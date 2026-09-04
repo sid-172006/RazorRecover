@@ -188,7 +188,9 @@ def run_batch(dataset_path: Path, webhook_url: str, clean_db: bool = False):
 
         tag = "RULE" if decided_by == "rule" else "AI"
         status_sym = "✓" if is_category_correct else "✗"
-        print(f"[{tag}] {status_sym} {assigned_category} -> {assigned_action} ({execution_result}) in {elapsed:.2f}s")
+        display_action = assigned_action or "escalate_manual_review"
+        display_result = execution_result or "manual_review"
+        print(f"[{tag}] {status_sym} {assigned_category} -> {display_action} ({display_result}) in {elapsed:.2f}s")
 
     # Metrics computation
     print("\n" + "=" * 70)
@@ -255,7 +257,9 @@ def generate_markdown_report(path: Path, cases: list, results: list, metrics: di
         c = r["case"]
         rec = r["record"]
         eng = "Rule" if rec.get("decided_by") == "rule" else "AI"
-        md.append(f"| `{c['id']}` | {c['name']} | ₹{c['amount']:,} | **{eng}** | `{rec.get('category')}` | `{rec.get('recommended_action')}` | {rec.get('execution_result', 'unresolved')} |")
+        action = rec.get("recommended_action") or "escalate_manual_review"
+        outcome = rec.get("execution_result") or "abstained → manual review"
+        md.append(f"| `{c['id']}` | {c['name']} | ₹{c['amount']:,} | **{eng}** | `{rec.get('category')}` | `{action}` | {outcome} |")
 
     md.append("\n---\n*Generated automatically by `scripts/run_ground_truth_batch.py` for RazorRecover.*")
 

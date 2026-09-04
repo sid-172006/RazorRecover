@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import PaymentFailure, FailureStatus
 from app.classifier import classify_by_rules
 from app.policy import validate_action, get_subscription_history
-from app.llm_classifier import classify_with_claude
+from app.llm_classifier import classify_with_claude, GEMINI_MODEL
 from app.executor import execute_action
 from app.audit import log_event
 
@@ -92,6 +92,7 @@ def _handle_ambiguous_case(db: Session, failure: PaymentFailure, fields: dict) -
         "confidence": decision.confidence,
         "reason": decision.reason,
         "retry_after_hours": decision.retry_after_hours,
+        "model": GEMINI_MODEL,
     })
 
     return _apply_policy_and_finalize(db, failure, decision.recommended_action, decision.confidence)

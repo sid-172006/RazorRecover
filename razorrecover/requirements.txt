@@ -4,6 +4,5 @@ sqlalchemy==2.0.35
 greenlet==3.2.4
 python-dotenv==1.0.1
 razorpay==1.4.2
-google-generativeai
 pydantic==2.9.2
 requests==2.32.3
