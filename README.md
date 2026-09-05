@@ -291,3 +291,4 @@ RazorRecover/
 
 - Built for the **Razorpay AI Buildathon — Track 03: AI Revenue Recovery**.
 - Designed and engineered with focus on financial safety, regulatory compliance, and explainable AI.
+- Build by Siddhi Arora
