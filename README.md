@@ -2,111 +2,185 @@
 ### An Explainable AI Agent for Safe Recurring-Payment Recovery
 **Track 03: AI Revenue Recovery — Razorpay AI Buildathon**
 
-> *"We don't blindly retry every failed payment. We determine the safest next action, execute it within strict limits, and show exactly how much revenue was recovered."*
+> *"We don't blindly retry every failed payment. We diagnose the root cause, enforce strict safety guardrails, execute calibrated recovery actions, and show exactly how much revenue was saved."*
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Next.js 14](https://img.shields.io/badge/Frontend-Next.js%2014-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
-[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Google%20Gemini-4285F4.svg?logo=google&logoColor=white)](https://ai.google.dev/)
-[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
-[![Playwright](https://img.shields.io/badge/Testing-Playwright%20E2E-2EAD33.svg?logo=playwright&logoColor=white)](https://playwright.dev)
-
----
-
-## 🚀 Key Highlights & Measured Results
-
-From our [Ground-Truth Benchmark Report](GROUND_TRUTH_EVALUATION_REPORT.md) (16 realistic failure scenarios based on Razorpay's published error taxonomy):
-- **Recovered Revenue:** **₹98,549.00** across subscriptions (`SIMULATED` outcome).
-- **Retries Avoided:** **18 doomed attempts prevented** (expired cards, blocked accounts, cancelled mandates).
-- **Classification Accuracy:** **100.0%** against labeled ground truth.
-- **Safety Boundary Enforcement:** **100% Policy Adherence (0 violations)**.
-- **Deterministic Efficiency:** **75% of failures** diagnosed in **<5ms** by deterministic rules with zero token cost; AI is invoked only when bank error reasons are genuinely ambiguous.
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js 14](https://img.shields.io/badge/Frontend-Next.js%2014-black.svg?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![Google Gemini](https://img.shields.io/badge/AI%20Engine-Google%20Gemini-4285F4.svg?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![Playwright](https://img.shields.io/badge/Testing-Playwright%20E2E-2EAD33.svg?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 
 ---
 
-## 🌟 What's New & Core Features
+## 📸 Product Overview
 
-### 1. Dual-Perspective Interactive Simulator (`/simulator`)
-Experience payment failure and autonomous recovery in a visual, interactive dual viewport:
-- **Merchant SaaS Checkout:** Interactive checkout card with editable subscription amounts (e.g. ₹1.5k, ₹18.5k, or custom), plan selection, and one-click payment triggering.
-- **Customer Smartphone (Mock):** Live simulated mobile phone receiving WhatsApp recovery notifications with contextual 1-click recovery actions.
-- **Live 5-Stage Autonomous Pipeline Visualizer:**
-  1. **Webhook Ingested & Verified:** Validates Razorpay HMAC-SHA256 signature and idempotency.
-  2. **Intelligent Diagnosis & Classification:** Visualizes Tier 1 (Deterministic Rule) vs. Tier 2 (Google Gemini live LLM reasoning).
-  3. **Safety & Compliance Guardrails:** Verifies retry budgets, cooldown windows, and RBI auto-debit AFA limits.
-  4. **Smart Recovery Action Dispatched:** Dispatches personalized WhatsApp notification with suppressive guardrails against retry fatigue.
-  5. **Resolution & Merchant Ledger Update:** Simulates customer 1-click recovery and updates the SQLite financial ledger in real time.
+![Executive Recovery Ledger](docs/screenshots/dashboard_ledger.png)
 
-### 2. Dynamic Ambiguous Decline Triage with Google Gemini
-When bank decline messages are vague or lack sub-reasons, RazorRecover escalates to **Google Gemini** (`gemini-3.1-flash-lite`, `gemini-3.5-flash`, `gemini-3.6-flash` multi-model cascade):
-- **Dynamic Confidence Scoring:** Confidence is never hardcoded. Gemini evaluates the specific nuance of the bank error message and assigns a calibrated confidence score (e.g., 70% to 90%).
-- **Interactive Sub-Scenario Presets:**
-  - **Transient Core Banking Glitch** (*"Payment was declined by customer bank"*) ➔ `retry_after_delay` (Confidence ~82%)
-  - **Banking App 2FA Confirmation** (*"Customer confirmation required on mobile banking app"*) ➔ `customer_reapproval` (Confidence ~88%)
-  - **Card Restriction / Channel Blocked** (*"Transaction not permitted for card type"*) ➔ `request_payment_method_update` (Confidence ~82%)
-  - **Mandate Limit Exceeded** (*"Mandate execution failed: recurring debit limit exceeded"*) ➔ `request_reauthorisation` (Confidence ~86%)
-- **Raw Bank Error Playground:** Type any custom bank decline text in the simulator textarea and watch Gemini analyze the root cause live!
+---
+
+## 💡 The Problem: The "Dumb Retry" Tragedy
+
+In recurring-subscription businesses (SaaS, OTT, insurance, memberships), **failed payments account for 20–40% of involuntary churn**. In India, subscription recovery is uniquely challenging due to:
+1. **RBI e-Mandate Regulations:** Mandates requiring Additional Factor Authentication (AFA/OTP) for amounts exceeding ₹15,000.
+2. **Card Renewal Lags & Hotlisting:** Expired cards or cards suspended due to suspected fraud.
+3. **Core Banking System (CBS) Glitches:** Intermittent bank switch downtime during peak hours or midnight settlement windows.
+
+### Status Quo vs. RazorRecover
+
+| Feature | Standard Dunning / Status Quo | RazorRecover AI Agent |
+| :--- | :--- | :--- |
+| **Retry Strategy** | Blind exponential backoff (e.g. 5–8 automatic retries) | **Calibrated & Cause-Specific** (Retries avoided when doomed) |
+| **Expired / Blocked Cards** | Retries repeatedly until max limit ➔ Customer churns | **Zero doomed retries**; instantly triggers payment method update link |
+| **RBI AFA Thresholds (>₹15k)** | Blind retries always fail (requires 2FA) | Identifies AFA requirement ➔ dispatches 1-click re-approval request |
+| **Ambiguous Bank Declines** | Treated as generic failures with random retries | **Google Gemini LLM Triage** analyzes nuanced bank clues |
+| **Customer Experience** | Annoying 3 AM bank SMS alerts & card blocks | Personalized WhatsApp notification with 1-click UPI QuickPay link |
+| **Cost & Latency** | Expensive per-retry gateway penalties & slow dunning | **75% diagnosed in <5ms** (zero token cost) via deterministic rules |
+| **Safety & Compliance** | Hardcoded scripts or unconstrained AI agents | **Deterministic Policy Gate:** LLM recommends, policy validates |
+
+---
+
+## 🚀 Key Measured Results (Ground-Truth Benchmark)
+
+From our automated [Ground-Truth Benchmark Suite](GROUND_TRUTH_EVALUATION_REPORT.md) (16 realistic failure scenarios based on Razorpay's published error taxonomy):
+
+```
+======================================================================
+  RAZORRECOVER GROUND-TRUTH BENCHMARK SUMMARY
+======================================================================
+Total Cases Evaluated   : 16
+Classification Accuracy : 100.0%
+Macro F1-Score          : 100.0%
+Deterministic Rule Path : 12/16 (75.0%)  [Avg Latency: <5ms]
+Adaptive AI / LLM Path  : 4/16 (25.0%)   [Avg Latency: ~3.6s]
+Safety Gate Violations  : 0 (100% policy enforcement)
+Doomed Retries Blocked  : 31 attempts prevented
+Revenue Recovered       : ₹2,15,645.00 (22 subscriptions restored)
+Average Time to Recovery: 12.0s
+```
+
+---
+
+## 📐 Two-Tier System Architecture
+
+RazorRecover is built on a **Two-Tier Architecture**: high-frequency, clear-cut failures are resolved in milliseconds with zero LLM API cost. Only genuinely ambiguous bank declines are escalated to Google Gemini with strict deterministic policy guardrails.
+
+```mermaid
+flowchart TD
+    subgraph Ingestion["1. Webhook Ingestion & Security"]
+        A[Razorpay Webhook: payment.failed] --> B[HMAC-SHA256 Signature Verification]
+        B --> C[Idempotency & Replay Defense]
+        C --> D[Payload Normalizer & PII Masking]
+    end
+
+    subgraph Tier1["2. Tier 1: Deterministic Rule Engine (<5ms)"]
+        D --> E{Known Error Reason?}
+        E -- "insufficient_funds" --> F1[Category: insufficient_balance\nAction: wait_and_notify]
+        E -- "card_expired / hotlisted" --> F2[Category: expired_or_blocked_card\nAction: request_payment_method_update]
+        E -- "auth_failed / AFA >₹15k" --> F3[Category: authentication_required\nAction: customer_reapproval]
+        E -- "mandate_revoked" --> F4[Category: mandate_cancelled\nAction: request_reauthorisation]
+    end
+
+    subgraph Tier2["3. Tier 2: Adaptive Google Gemini AI Triage (~3.6s)"]
+        E -- "Generic / Vague Bank Decline" --> G[Google Gemini Multi-Model Cascade\ngemini-3.1-flash-lite / 3.5 / 3.6]
+        G --> H[Calibrated Confidence Score\nDynamic Action & Diagnosis Reason]
+    end
+
+    subgraph Policy["4. Safety Boundary & Guardrails"]
+        F1 --> P[Deterministic Policy Validator\napp/policy.py]
+        F2 --> P
+        F3 --> P
+        F4 --> P
+        H --> P
+        P --> Q{Policy Approved?}
+        Q -- "Violates limits / <60% Conf" --> R[Escalate to Manual Review Queue]
+        Q -- "Approved" --> S[Execute Calibrated Recovery]
+    end
+
+    subgraph Execution["5. Execution & Audit Ledger"]
+        S --> T[Dispatch WhatsApp Notification with 1-Click Action]
+        S --> U[Schedule Delayed Non-Aggressive Retry]
+        T & U & R --> V[(Immutable SQLite Audit Trail)]
+        V --> W[Next.js 14 Executive Recovery Ledger & Metrics]
+    end
+```
+
+---
+
+## 🌟 Core Features & Visual Walkthrough
+
+### 1. Dual-Perspective Live Recovery Simulator (`/simulator`)
+
+The simulator provides an end-to-end interactive experience allowing judges and developers to test payment failures and observe autonomous recovery in real-time without typing terminal commands.
+
+![Dual-Perspective Simulator with Gemini Triage](docs/screenshots/gemini_ai_recovery.png)
+
+- **Left Viewport (Customer Mobile Mock & SaaS Checkout):**
+  - **Editable Amount Due:** Adjust amounts freely (e.g. ₹1.5k, ₹18.5k, or custom) to test micro-transactions vs. high-value RBI AFA thresholds.
+  - **Live WhatsApp Resolution:** Customer receives a real-time recovery alert with a contextual 1-click CTA button (e.g. *"Pay via UPI QuickPay"*, *"Update Card"*, or *"Authorize in Banking App"*).
+- **Right Viewport (Autonomous Decision Pipeline):**
+  - Live 5-stage sequential pipeline visualizer showing HMAC validation, rule vs. AI triage, guardrail checks, WhatsApp dispatch, and final ledger updates.
+
+---
+
+### 2. Live Google Gemini AI Triage for Ambiguous Declines
+
+When customer banks return non-descriptive errors (e.g. `GATEWAY_ERROR` with *"Payment was declined by the customer's bank"*), RazorRecover escalates to **Google Gemini** (`gemini-3.1-flash-lite` with automatic fallback to `3.5-flash` and `3.6-flash`).
+
+#### Ambiguous Failure Variations Playground:
+Directly within the simulator, test diverse ambiguous decline scenarios and observe Gemini's dynamic classification and calibrated confidence scoring:
+
+1. **Transient Core Banking Glitch:**
+   - *Input:* `"Payment was declined by the customer's bank."`
+   - *Gemini Action:* `retry_after_delay` (Confidence: **82%**)
+2. **Banking App 2FA Confirmation Required:**
+   - *Input:* `"Transaction requires customer confirmation on mobile banking app or biometric approval."`
+   - *Gemini Action:* `customer_reapproval` (Confidence: **88%**)
+3. **Card Restrictions / Channel Blocked:**
+   - *Input:* `"Bank response: Transaction not permitted for this card type. Account or e-commerce channel restriction active."`
+   - *Gemini Action:* `request_payment_method_update` (Confidence: **82%**)
+4. **Mandate Limit Exceeded:**
+   - *Input:* `"Standing instruction mandate execution failed: recurring debit authorization limit exceeded."`
+   - *Gemini Action:* `request_reauthorisation` (Confidence: **86%**)
+5. **Custom Raw Bank Error Input:**
+   - Type any arbitrary bank decline message into the textarea — Gemini evaluates the text live and assigns an honest recovery strategy.
+
+---
 
 ### 3. Executive Recovery Ledger (`/`)
-- Real-time auto-polling financial metrics: Total Failures, At-Risk Revenue, Recovered Revenue, Retries Avoided, Recovery Rate.
-- Comprehensive incident inspection drawer with complete raw JSON payloads, policy decisions, and audit timeline.
-- Honest `SIMULATED` provenance badge on every test record.
+
+A single-pane-of-glass dashboard for finance and revenue operations teams:
+- **Live Metrics Strip:** Total Failures, Recovered Revenue, Retries Avoided, Recovery Rate, and Policy Violations auto-polling in real-time.
+- **Financial Yield Donut & Engine Breakdown:** Visual distribution of recovered funds vs. unresolved revenue, plus Tier 1 Rule vs. Tier 2 AI classification splits.
+- **Comprehensive Audit Timeline:** Click any transaction to inspect its complete immutable lifecycle: Webhook Ingested ➔ Diagnosis ➔ Policy Check ➔ Action Dispatched ➔ Resolution.
 
 ---
 
-## 📐 Two-Tier Architecture
+## 🛡️ Safety Boundaries & Fintech Guardrails
 
-```
-Razorpay Webhook (payment.failed)
-        ↓
-Webhook Security (HMAC-SHA256 signature verification & idempotency)
-        ↓
-Failure Normalizer (defensively extracts nested payment/subscription fields & masks PII)
-        ↓
-Tier 1: Deterministic Rules (app/classifier.py — handles clear-cut cases in <5ms, zero token cost)
-        ↓ (if inconclusive / ambiguous)
-Tier 2: AI Reasoning Agent (app/llm_classifier.py — Google Gemini multi-model cascade)
-        ↓
-Policy Validator (app/policy.py — whitelist, retry budgets, cooldowns, RBI AFA limits)
-        ↓
-Action Executor (app/executor.py — retry, notify, reauthorise, or manual review queue)
-        ↓
-Immutable Audit Log (AuditEvent & PaymentFailure SQLite tables)
-        ↓
-Live Next.js 14 Dashboard (Interactive dual-perspective simulator & ledger feed)
-```
+In financial systems, an unconstrained AI agent is dangerous — it can hallucinate actions, exceed retry limits, spam customers at night, or violate banking regulations. RazorRecover enforces a **strict safety boundary**:
+
+1. **Zero Direct Tool-Calling:** The LLM **recommends**; it **never executes**. The recommendation is returned as a strictly typed Pydantic object (`ClaudeDecision`).
+2. **Whitelist Action Validation:** Any action not in the allowed action set (`wait_and_notify`, `request_payment_method_update`, `customer_reapproval`, `request_reauthorisation`, `retry_after_delay`, `escalate_manual_review`) is rejected immediately.
+3. **Deterministic Retry Budgets:** A hard ceiling of maximum 3 retries per subscription per 7-day lookback window prevents card blocking and gateway fines.
+4. **24-Hour Notification Cooldown:** Prevents spamming customers with redundant WhatsApp messages.
+5. **Confidence Gate:** Any recommendation with confidence `< 0.60` is routed to the `escalate_manual_review` queue instead of guessing.
 
 ---
 
-## 🛠️ Project Structure
-
-- **`razorrecover/`**: FastAPI backend, database models, policy engine, and LLM classifier.
-  - `app/classifier.py`: Tier 1 deterministic rules for clear failure categories.
-  - `app/llm_classifier.py`: Tier 2 Google Gemini AI triage with model fallback.
-  - `app/policy.py`: Deterministic safety gate & allowed-action whitelist.
-  - `app/executor.py`: Action execution with explicit `SIMULATED` labeling.
-  - `app/simulation.py`: Interactive simulation engine with dynamic amounts & error descriptions.
-  - `scripts/ground_truth_dataset.json`: Labeled benchmark dataset (16 realistic scenarios).
-  - `scripts/run_ground_truth_batch.py`: Automated batch evaluation runner.
-  - `test_e2e_playwright.py`: Comprehensive Playwright browser and API test suite.
-- **`razorrecover-dashboard/`**: Next.js 14 + Tailwind CSS dashboard.
-  - `app/page.tsx`: Executive Recovery Ledger and live metrics strip.
-  - `app/simulator/page.tsx`: Dual-perspective checkout & smartphone recovery simulator.
-  - `lib/api.ts`: Typed API client for FastAPI backend communication.
-
----
-
-## 🏃 Quickstart: Running Locally
+## 🏃 3-Minute Quickstart (Judge Evaluation Guide)
 
 ### Prerequisites
 - Python 3.9+
 - Node.js 18+
-- Google Gemini API Key (free tier available at [Google AI Studio](https://aistudio.google.com/))
+- Google Gemini API Key (get a free key at [Google AI Studio](https://aistudio.google.com/))
 
-### 1. Backend Setup (FastAPI)
+### Step 1: Clone & Setup Backend
 ```bash
-cd razorrecover
-python -m venv venv
+git clone https://github.com/sid-172006/RazorRecover.git
+cd RazorRecover/razorrecover
 
+python -m venv venv
 # On Windows:
 venv\Scripts\activate
 # On macOS/Linux:
@@ -114,72 +188,106 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 
-# Configure environment variables
-# Copy .env.example to .env and set GEMINI_API_KEY
+# Copy .env.example to .env and insert your GEMINI_API_KEY
+copy .env.example .env
+```
+
+Start the FastAPI backend:
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
-*Backend runs at `http://127.0.0.1:8000` with interactive API docs at `http://127.0.0.1:8000/docs`.*
+*API docs available at `http://localhost:8000/docs`.*
 
-### 2. Frontend Setup (Next.js)
+---
+
+### Step 2: Setup & Launch Dashboard
+In a new terminal:
 ```bash
-cd razorrecover-dashboard
+cd RazorRecover/razorrecover-dashboard
 npm install
 npm run dev
 ```
-- Open **http://localhost:3000** for the **Executive Recovery Ledger**.
-- Open **http://localhost:3000/simulator** for the **Live Dual-Perspective Simulator**.
+*Open [http://localhost:3000](http://localhost:3000) for the Executive Ledger or [http://localhost:3000/simulator](http://localhost:3000/simulator) for the Live Simulator.*
 
-### 3. Clear / Reset Database (Optional)
-If you want to start with a fresh slate before recording a demo:
+---
+
+### Step 3: Run Automated Benchmark (Instant Verification)
+To verify the entire ground-truth benchmark suite and see the accuracy and policy adherence live:
 ```bash
-python -c "from app.database import Base, engine; Base.metadata.drop_all(bind=engine); Base.metadata.create_all(bind=engine)"
+python razorrecover/scripts/run_ground_truth_batch.py
 ```
 
-### 4. Run Benchmark & Tests
-```bash
-# Run the complete ground-truth benchmark suite:
-python razorrecover/scripts/run_ground_truth_batch.py
+---
 
-# Run Playwright E2E browser & API test suite (optional):
-# Requires: pip install playwright && playwright install chromium
+### Step 4: Run Playwright E2E Test Suite (Optional)
+```bash
+# Requires Playwright browsers installed
 python razorrecover/test_e2e_playwright.py
 ```
 
 ---
 
-## 🎬 How to Demo in the Interactive Simulator
+## 🔌 API Reference
 
-1. Navigate to **http://localhost:3000/simulator**.
-2. **Test Clear-Cut Rule Failure (Tier 1):**
-   - Choose Scenario 1 (*"Month-End Low Balance"*) or Scenario 2 (*"Expired Card"*).
-   - Click **Simulate Customer Payment →**.
-   - Notice Step 2 runs instantaneously via **Tier 1: Deterministic Rule** (<5ms, zero token cost).
-3. **Test Ambiguous Bank Decline with Google Gemini (Tier 2):**
-   - Choose Scenario 3 (*"Ambiguous Bank Decline"*).
-   - Select one of the presets (e.g., **Banking App 2FA** or **Card Restrictions**) or type any custom bank error string into the textarea.
-   - Adjust the **Amount Due** (e.g., ₹18,500).
-   - Click **Simulate Customer Payment →**.
-   - Watch Step 2 highlight **Google Gemini (Live AI Agent)** with calibrated confidence scores, dynamic category, and natural language diagnosis.
-4. **Complete 1-Click Recovery:**
-   - Look at the **Customer Mobile View** on the left.
-   - Tap the WhatsApp resolution button (e.g. *"Authorize ₹18,500 in Banking App"*).
-   - Watch Step 5 update to **RECOVERED (+₹18,500)** and verify the Ledger updates on the main page.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/webhooks/razorpay` | Ingests and verifies Razorpay `payment.failed` webhooks using HMAC-SHA256. |
+| `GET` | `/payment-failures` | Returns paginated list of all payment failures with status and metrics. |
+| `GET` | `/payment-failures/{id}/audit-trail` | Returns the complete immutable decision trail for a specific failure. |
+| `GET` | `/metrics` | Aggregates revenue at risk, recovered amount, retries avoided, and recovery rate. |
+| `GET` | `/simulation/scenarios` | Returns configured test scenarios for the interactive simulator. |
+| `POST` | `/simulate-failure` | Triggers a live simulated payment decline with optional custom amounts and bank error text. |
+| `POST` | `/resolve-failure/{id}` | Simulates customer completing payment recovery via WhatsApp link (updates status to `RECOVERED`). |
 
 ---
 
-## ⚠️ Data Strategy: Why Simulated Webhooks
+## ⚠️ Data Strategy & Transparency
 
-Razorpay's webhook configuration is **gated behind KYC completion, even in Test Mode**. While API keys are available immediately, the Dashboard → Webhooks settings page requires full KYC verification before a webhook endpoint URL can be registered. This means real `payment.failed` webhook events cannot be received without a fully verified business account.
+Razorpay's webhook configuration is **gated behind KYC completion, even in Test Mode**. While API keys are available immediately, registering a webhook endpoint URL requires full KYC verification.
 
-**Our workaround** (documented in the [Project Spec's Data Strategy section](RazorRecover-Project-Spec.md#5-data-strategy-be-explicit-about-this-in-the-demo)):
-- The simulator generates realistically structured, correctly HMAC-SHA256 signed payloads matching Razorpay's published webhook format — field names, error codes, error reasons, and nesting taken from Razorpay's official API documentation.
-- The backend **cannot distinguish** these from a real Razorpay webhook call — the same signature verification, parsing, classification, policy, and execution pipeline runs identically.
-- Every simulated fixture is **explicitly labeled** `SIMULATED` (via the `X-RazorRecover-Test-Source` header), and the dashboard renders a visible `SIMULATED` provenance tag on each record. We never present simulated outcomes as genuine recovered money.
+**Our Engineering Approach:**
+- We built a realistic webhook generator (`app/simulation.py` & `scripts/send_test_webhook.py`) that outputs HMAC-SHA256 signed payloads conforming 100% to Razorpay's published error taxonomy and JSON structure.
+- The backend processes these through the exact same HMAC signature verification, parsing, classification, policy validation, and execution pipeline as live webhooks.
+- Every simulated record is **transparently labeled** `SIMULATED` on the dashboard, in the database, and in the audit log. We never present simulated recoveries as real processed funds.
 
 ---
 
-## 📄 Documentation Links
+## 📂 Project Structure
 
-- [Project Specification](RazorRecover-Project-Spec.md)
-- [Project Documentation & Audit Trail](RazorRecover-Project-Documentation%20(1).md)
-- [Ground-Truth Evaluation Report](GROUND_TRUTH_EVALUATION_REPORT.md)
+```
+RazorRecover/
+├── README.md                              # Main documentation & architecture guide
+├── GROUND_TRUTH_EVALUATION_REPORT.md      # Benchmark report (16 labeled test cases)
+├── RazorRecover-Project-Spec.md           # Product & engineering specification
+│
+├── razorrecover/                          # Backend (FastAPI + SQLAlchemy + Gemini)
+│   ├── app/
+│   │   ├── main.py                        # FastAPI routes, CORS, and webhook endpoint
+│   │   ├── classifier.py                  # Tier 1: Deterministic rule engine (<5ms)
+│   │   ├── llm_classifier.py              # Tier 2: Google Gemini AI triage with fallback
+│   │   ├── policy.py                      # Deterministic safety gate & retry budgets
+│   │   ├── executor.py                    # Action dispatcher & execution logger
+│   │   ├── simulation.py                  # Simulation scenario fixtures & dynamic webhook generator
+│   │   ├── database.py                    # SQLite database session & engine
+│   │   ├── models.py                      # SQLAlchemy models (PaymentFailure, AuditEvent)
+│   │   └── webhook_security.py            # HMAC-SHA256 signature verification & replay defense
+│   ├── scripts/
+│   │   ├── ground_truth_dataset.json      # 16 labeled ground-truth benchmark cases
+│   │   ├── run_ground_truth_batch.py      # Automated benchmark runner & metric evaluator
+│   │   └── send_test_webhook.py           # CLI test webhook sender
+│   └── test_e2e_playwright.py             # Playwright E2E browser & API test suite
+│
+└── razorrecover-dashboard/                # Frontend (Next.js 14 + Tailwind CSS)
+    ├── app/
+    │   ├── page.tsx                       # Executive Recovery Ledger & metrics strip
+    │   └── simulator/page.tsx             # Dual-perspective interactive checkout & smartphone simulator
+    ├── components/                        # UI components (metrics cards, charts, audit timeline)
+    └── lib/api.ts                         # Type-safe API client for backend communication
+```
+
+---
+
+## 👥 Authors & Acknowledgments
+
+- Built for the **Razorpay AI Buildathon — Track 03: AI Revenue Recovery**.
+- Designed and engineered with focus on financial safety, regulatory compliance, and explainable AI.
